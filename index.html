@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Us</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f3ead9;
+    --plum:#1b1017;
+    --plum-deep:#100a0f;
+    --gold:#d3b06a;
+    --rose:#b97a7a;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--plum-deep);
+    overflow:hidden;
+    font-family:'Cormorant Garamond', Georgia, serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #stage{
+    position:fixed; inset:0;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  #stage.dragging{ cursor: grabbing; }
+
+  .slide{
+    position:absolute; inset:0;
+    background-size:cover;
+    background-position:center;
+    opacity:0;
+    transform: scale(1.06);
+    transition: opacity 1.1s ease, transform 8s ease-out;
+    will-change: opacity, transform;
+  }
+  .slide.active{
+    opacity:1;
+    transform: scale(1);
+    z-index:2;
+  }
+  .slide.prev{ z-index:1; }
+
+  @media (prefers-reduced-motion: reduce){
+    .slide{ transition: opacity 0.6s ease; transform:none !important; }
+  }
+
+  #vignette{
+    position:fixed; inset:0; z-index:3; pointer-events:none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(16,10,15,0.55) 100%),
+                linear-gradient(to top, rgba(16,10,15,0.65) 0%, rgba(16,10,15,0) 22%);
+  }
+
+  #caption{
+    position:fixed; left:0; right:0; bottom:6.5%; z-index:4;
+    text-align:center; color:var(--ink);
+    font-style:italic; font-weight:400;
+    font-size: clamp(15px, 2.2vw, 22px);
+    letter-spacing:0.02em;
+    opacity:0; transition: opacity 0.8s ease;
+    padding: 0 8%;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.5);
+  }
+  #caption.show{ opacity:0.92; }
+
+  #dots{
+    position:fixed; left:0; right:0; bottom:3%; z-index:4;
+    display:flex; justify-content:center; gap:8px;
+    pointer-events:none;
+  }
+  #dots span{
+    width:5px; height:5px; border-radius:50%;
+    background: rgba(243,234,217,0.28);
+    transition: background 0.4s ease, transform 0.4s ease;
+  }
+  #dots span.active{ background: var(--gold); transform: scale(1.6); }
+
+  #soundToggle{
+    position:fixed; top:5%; right:5%; z-index:6;
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid rgba(243,234,217,0.35);
+    background: rgba(16,10,15,0.35);
+    backdrop-filter: blur(4px);
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  #soundToggle:hover, #soundToggle:focus-visible{
+    border-color: var(--gold);
+    background: rgba(16,10,15,0.55);
+  }
+  #soundToggle svg{ width:16px; height:16px; }
+
+  #hint{
+    position:fixed; left:0; right:0; top:46%; z-index:4;
+    text-align:center; color: var(--ink);
+    font-size: clamp(13px, 1.6vw, 16px);
+    letter-spacing:0.12em; text-transform:uppercase;
+    opacity:0.55;
+    animation: pulse 2.6s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes pulse{ 0%,100%{opacity:0.25;} 50%{opacity:0.6;} }
+
+  #startScreen{
+    position:fixed; inset:0; z-index:10;
+    background: var(--plum);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--ink); text-align:center;
+    cursor:pointer;
+    transition: opacity 0.9s ease;
+  }
+  #startScreen h1{
+    font-weight:500; font-style:italic;
+    font-size: clamp(28px, 6vw, 52px);
+    margin:0 0 14px;
+    letter-spacing:0.02em;
+  }
+  #startScreen p{
+    margin:0; opacity:0.6;
+    font-size: clamp(13px, 1.6vw, 16px);
+    letter-spacing:0.1em; text-transform:uppercase;
+  }
+  #startScreen.hide{ opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="vignette"></div>
+<div id="caption"></div>
+<div id="dots"></div>
+<div id="hint">drag to look back</div>
+
+<button id="soundToggle" aria-label="Toggle music" title="Toggle music">
+  <svg id="soundIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
+    <path id="wave1" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+    <path id="wave2" d="M18 6a9 9 0 0 1 0 12"/>
+  </svg>
+</button>
+
+<div id="startScreen">
+  <h1>Us</h1>
+  <p>tap to begin</p>
+</div>
+
+<audio id="music" loop preload="auto">
+  <source src="music/song.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ---------------------------------------------------------------
+   EDIT ME: list your photos (and optional captions) here.
+   Put the image files inside the /images folder and reference
+   their filenames below, in the order you want them shown.
+   ------------------------------------------------------------- */
+const SLIDES = [
+  { src: 'images/1.jpg', caption: 'Hello My Love' },
+  { src: 'images/2.jpg', caption: '' },
+  { src: 'images/3.jpg', caption: '' },
+  { src: 'images/4.jpg', caption: '' },
+  { src: 'images/5.jpg', caption: '' },
+];
+const AUTO_ADVANCE_MS = 6500;
+/* ----------------------------------------------------------- */
+
+const stage = document.getElementById('stage');
+const captionEl = document.getElementById('caption');
+const dotsEl = document.getElementById('dots');
+const hintEl = document.getElementById('hint');
+const startScreen = document.getElementById('startScreen');
+const music = document.getElementById('music');
+const soundToggle = document.getElementById('soundToggle');
+
+let current = 0;
+let layers = [];
+let autoTimer = null;
+let musicOn = true;
+
+function buildSlides(){
+  SLIDES.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'slide';
+    div.style.backgroundImage = `url("${s.src}")`;
+    stage.appendChild(div);
+    layers.push(div);
+
+    const dot = document.createElement('span');
+    dotsEl.appendChild(dot);
+  });
+}
+
+function showSlide(index, direction){
+  const total = SLIDES.length;
+  current = ((index % total) + total) % total;
+
+  layers.forEach((l, i) => {
+    l.classList.remove('active', 'prev');
+  });
+  layers[current].classList.add('active');
+
+  [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === current));
+
+  const cap = SLIDES[current].caption;
+  if (cap) {
+    captionEl.textContent = cap;
+    captionEl.classList.add('show');
+  } else {
+    captionEl.classList.remove('show');
+  }
+}
+
+function next(){ showSlide(current + 1); resetAutoAdvance(); }
+function prev(){ showSlide(current - 1); resetAutoAdvance(); }
+
+function resetAutoAdvance(){
+  clearInterval(autoTimer);
+  autoTimer = setInterval(() => showSlide(current + 1), AUTO_ADVANCE_MS);
+}
+
+/* --- drag / swipe handling --- */
+let dragStartX = null;
+let dragging = false;
+
+function dragStart(x){
+  dragStartX = x;
+  dragging = true;
+  stage.classList.add('dragging');
+}
+function dragEnd(x){
+  if (!dragging) return;
+  dragging = false;
+  stage.classList.remove('dragging');
+  if (dragStartX === null) return;
+  const delta = x - dragStartX;
+  const threshold = 60;
+  if (delta > threshold) prev();
+  else if (delta < -threshold) next();
+  dragStartX = null;
+  hintEl.style.display = 'none';
+}
+
+stage.addEventListener('pointerdown', e => dragStart(e.clientX));
+stage.addEventListener('pointerup', e => dragEnd(e.clientX));
+stage.addEventListener('pointerleave', e => { if(dragging) dragEnd(e.clientX); });
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') next();
+  if (e.key === 'ArrowLeft') prev();
+});
+
+/* --- music --- */
+function updateSoundIcon(){
+  document.getElementById('wave1').style.display = musicOn ? '' : 'none';
+  document.getElementById('wave2').style.display = musicOn ? '' : 'none';
+  soundToggle.style.opacity = musicOn ? '1' : '0.5';
+}
+
+soundToggle.addEventListener('click', () => {
+  musicOn = !musicOn;
+  if (musicOn) music.play().catch(()=>{});
+  else music.pause();
+  updateSoundIcon();
+});
+
+/* --- start / autoplay unlock --- */
+startScreen.addEventListener('click', begin);
+startScreen.addEventListener('touchstart', begin, { once:true, passive:true });
+
+function begin(){
+  startScreen.classList.add('hide');
+  music.volume = 0.55;
+  music.play().catch(() => { musicOn = false; updateSoundIcon(); });
+  setTimeout(() => { hintEl.style.display = 'none'; }, 4500);
+  setTimeout(() => startScreen.remove(), 1000);
+}
+
+buildSlides();
+showSlide(0);
+resetAutoAdvance();
+</script>
+</body>
+</html>
