@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Us</title>
+<title>Biz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
@@ -38,6 +38,9 @@
     transform: scale(1.06);
     transition: opacity 1.1s ease, transform 8s ease-out;
     will-change: opacity, transform;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .slide.active{
     opacity:1;
@@ -45,6 +48,22 @@
     z-index:2;
   }
   .slide.prev{ z-index:1; }
+
+  /* Styling for text-only final slide */
+  .slide.text-slide{
+    background: var(--plum-deep);
+    padding: 0 10%;
+    text-align: center;
+  }
+  .slide-text{
+    color: var(--ink);
+    font-size: clamp(20px, 3.5vw, 36px);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+    text-shadow: 0 2px 18px rgba(0,0,0,0.6);
+  }
 
   @media (prefers-reduced-motion: reduce){
     .slide{ transition: opacity 0.6s ease; transform:none !important; }
@@ -127,6 +146,16 @@
     font-size: clamp(13px, 1.6vw, 16px);
     letter-spacing:0.1em; text-transform:uppercase;
   }
+  
+  /* Added specific styling to make the volume hint subtle */
+  #startScreen p.volume-hint {
+    margin-top: 15px;
+    opacity: 0.45;
+    font-size: clamp(11px, 1.3vw, 14px);
+    letter-spacing: 0.08em;
+    text-transform: none;
+  }
+  
   #startScreen.hide{ opacity:0; pointer-events:none; }
 </style>
 </head>
@@ -147,8 +176,10 @@
 </button>
 
 <div id="startScreen">
-  <h1>Us</h1>
-  <p>tap to begin</p>
+  <h1>Biz</h1>
+  <p>Küçük bir dokunuşla başlayalım.</p>
+  <!-- New volume reminder -->
+  <p class="volume-hint">Sesini biraz açar mısın sevgilim?</p>
 </div>
 
 <audio id="music" loop preload="auto">
@@ -157,16 +188,15 @@
 
 <script>
 /* ---------------------------------------------------------------
-   EDIT ME: list your photos (and optional captions) here.
-   Put the image files inside the /images folder and reference
-   their filenames below, in the order you want them shown.
+   SLIDES LIST: Reference images or text slides here.
    ------------------------------------------------------------- */
 const SLIDES = [
-  { src: 'images/1.jpg', caption: 'Hello My Love' },
+  { src: 'images/1.jpg', caption: 'İyi ki varsın...' },
   { src: 'images/2.jpg', caption: '' },
   { src: 'images/3.jpg', caption: '' },
   { src: 'images/4.jpg', caption: '' },
   { src: 'images/5.jpg', caption: '' },
+  { text: 'Canlı olarak dünyaya geldim, seninle İnsan oldum.' }
 ];
 const AUTO_ADVANCE_MS = 6500;
 /* ----------------------------------------------------------- */
@@ -188,7 +218,17 @@ function buildSlides(){
   SLIDES.forEach((s, i) => {
     const div = document.createElement('div');
     div.className = 'slide';
-    div.style.backgroundImage = `url("${s.src}")`;
+    
+    if (s.text) {
+      div.classList.add('text-slide');
+      const p = document.createElement('p');
+      p.className = 'slide-text';
+      p.textContent = s.text;
+      div.appendChild(p);
+    } else if (s.src) {
+      div.style.backgroundImage = `url("${s.src}")`;
+    }
+
     stage.appendChild(div);
     layers.push(div);
 
