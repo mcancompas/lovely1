@@ -100,7 +100,7 @@
   #dots span.active{ background: var(--gold); transform: scale(1.6); }
 
   #soundToggle{
-    position:fixed; top:5%; right:5%; z-index:6;
+    position:fixed; top:5%; right:5%; z-index:11;
     width:38px; height:38px; border-radius:50%;
     border:1px solid rgba(243,234,217,0.35);
     background: rgba(16,10,15,0.35);
@@ -115,6 +115,21 @@
     background: rgba(16,10,15,0.55);
   }
   #soundToggle svg{ width:16px; height:16px; }
+
+  #soundToggle.attract{
+    animation: soundAttract 1.6s ease-in-out 3;
+  }
+  @keyframes soundAttract{
+    0%, 100%{
+      box-shadow: 0 0 0 0 rgba(211,176,106,0);
+      border-color: rgba(243,234,217,0.35);
+    }
+    50%{
+      box-shadow: 0 0 10px 3px rgba(211,176,106,0.45);
+      border-color: rgba(211,176,106,0.9);
+      transform: scale(1.08);
+    }
+  }
 
   #hint{
     position:fixed; left:0; right:0; top:46%; z-index:4;
@@ -167,7 +182,7 @@
 <div id="dots"></div>
 <div id="hint">drag to look back</div>
 
-<button id="soundToggle" aria-label="Toggle music" title="Toggle music">
+<button id="soundToggle" class="attract" aria-label="Toggle music" title="Toggle music">
   <svg id="soundIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
     <path id="wave1" d="M15.5 8.5a5 5 0 0 1 0 7"/>
@@ -191,11 +206,14 @@
    SLIDES LIST: Reference images or text slides here.
    ------------------------------------------------------------- */
 const SLIDES = [
-  { src: 'images/1.jpg', caption: 'İyi ki varsın...' },
+  { src: 'images/1.png', caption: 'İyi ki varsın...' },
   { src: 'images/2.jpg', caption: '' },
   { src: 'images/3.jpg', caption: '' },
-  { src: 'images/4.jpg', caption: '' },
-  { src: 'images/5.jpg', caption: '' },
+  { src: 'images/4.png', caption: '' },
+  { src: 'images/5.png', caption: '' },
+  { src: 'images/6.jpg', caption: '' },
+  { src: 'images/7.jpg', caption: '' },
+  { src: 'images/8.jpg', caption: '' },
   { text: 'Canlı olarak dünyaya geldim, seninle İnsan oldum.' }
 ];
 const AUTO_ADVANCE_MS = 6500;
@@ -304,17 +322,25 @@ function updateSoundIcon(){
 }
 
 soundToggle.addEventListener('click', () => {
+  soundToggle.classList.remove('attract');
   musicOn = !musicOn;
   if (musicOn) music.play().catch(()=>{});
   else music.pause();
   updateSoundIcon();
 });
 
-/* --- start / autoplay unlock --- */
+/* --- start / autoplay unlock ---
+   Browsers (especially on phones) block audio autoplay until the visitor
+   has interacted with the page at least once. There's no way to force
+   sound to play with zero interaction — that restriction lives in the
+   browser itself, not in this code. So instead we try to start silently
+   without asking, and only show the tap screen as a fallback if the
+   browser actually refuses. */
 startScreen.addEventListener('click', begin);
 startScreen.addEventListener('touchstart', begin, { once:true, passive:true });
 
 function begin(){
+  soundToggle.classList.remove('attract');
   startScreen.classList.add('hide');
   music.volume = 0.55;
   music.play().catch(() => { musicOn = false; updateSoundIcon(); });
@@ -322,9 +348,30 @@ function begin(){
   setTimeout(() => startScreen.remove(), 1000);
 }
 
+function tryAutoStart(){
+  music.volume = 0.55;
+  const playPromise = music.play();
+  if (playPromise !== undefined) {
+    playPromise
+      .then(() => {
+        // Autoplay allowed (rare on phones, more common on desktop or
+        // for returning visitors) — skip the tap screen entirely.
+        soundToggle.classList.remove('attract');
+        startScreen.classList.add('hide');
+        setTimeout(() => { hintEl.style.display = 'none'; }, 4500);
+        setTimeout(() => startScreen.remove(), 1000);
+      })
+      .catch(() => {
+        // Browser blocked it — this is the normal case on phones.
+        // Leave the start screen up; begin() runs on the first tap.
+      });
+  }
+}
+
 buildSlides();
 showSlide(0);
 resetAutoAdvance();
+tryAutoStart();
 </script>
 </body>
 </html>
