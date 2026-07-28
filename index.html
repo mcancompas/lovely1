@@ -230,7 +230,7 @@ const soundToggle = document.getElementById('soundToggle');
 let current = 0;
 let layers = [];
 let autoTimer = null;
-let musicOn = true;
+let musicOn = false;
 
 function buildSlides(){
   SLIDES.forEach((s, i) => {
@@ -343,7 +343,8 @@ function begin(){
   soundToggle.classList.remove('attract');
   startScreen.classList.add('hide');
   music.volume = 0.55;
-  music.play().catch(() => { musicOn = false; updateSoundIcon(); });
+  music.play().then(() => { musicOn = true; updateSoundIcon(); })
+              .catch(() => { musicOn = false; updateSoundIcon(); });
   setTimeout(() => { hintEl.style.display = 'none'; }, 4500);
   setTimeout(() => startScreen.remove(), 1000);
 }
@@ -356,6 +357,8 @@ function tryAutoStart(){
       .then(() => {
         // Autoplay allowed (rare on phones, more common on desktop or
         // for returning visitors) — skip the tap screen entirely.
+        musicOn = true;
+        updateSoundIcon();
         soundToggle.classList.remove('attract');
         startScreen.classList.add('hide');
         setTimeout(() => { hintEl.style.display = 'none'; }, 4500);
@@ -371,6 +374,7 @@ function tryAutoStart(){
 buildSlides();
 showSlide(0);
 resetAutoAdvance();
+updateSoundIcon();
 tryAutoStart();
 </script>
 </body>
